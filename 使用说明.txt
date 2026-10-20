@@ -1,0 +1,79 @@
+Codex Intel 兼容打包器
+
+独立仓库：~/Code/codex-intel
+把官方桌面界面、Intel Electron 运行时与本机 Codex 编码后端组合为本地兼容 App。
+这是非官方兼容构建，不是通用 ARM 指令转译器。
+
+当前来源
+官方 26.1013.40934（2026-10-16 发布），Electron 42.3.0，Intel Codex CLI 0.163.0。
+官方当前安装包名为 ChatGPT.app，内部仍为 openai-codex-electron，界面中包含 Codex。
+来源下载自官方更新源，并验证 OpenAI 的 Apple 开发者身份、完整代码签名和 Sparkle Ed25519 更新包签名。
+Apple 签名团队：2DC432GLL2。更新签名密钥从已验证的原始 App 读取，支持官方密钥轮换。
+
+打开
+双击 打开Codex Intel.command，或直接打开 dist/Codex Intel.app。
+首次启动可能显示官方引导，需要本人选择个人偏好；工具不会替你填写这些偏好。
+界面设置保存在 ~/Library/Application Support/Codex Intel，登录与会话复用正常的 Codex 本地后端。
+
+重新构建
+在这个仓库根目录运行：
+python3 fetch-latest.py
+python3 convert.py
+
+build.command 可以构建已准备好的来源。
+构建需要 Intel Mac、Python 3.11+、Node.js 22.12+、npm、Xcode Command Line Tools、已安装的 Intel Codex CLI 或 Codex 后台服务，以及 ripgrep。
+构建默认选用 .cache/sources/latest.json 指向的已验证来源；没有准备过来源时才读取 /Applications/Codex.app。
+旧版官方客户端可能已被服务端停用，建议先获取最新来源。
+
+网络较慢时，可针对官方 CDN 使用直接连接；不改变系统或全局代理：
+python3 fetch-latest.py --direct --workers 8
+
+首次构建会下载 Electron 和开源模块；以后复用 .cache 中的构建环境。
+如果 GitHub 下载缓慢，可以仅为这次构建选择 Electron 镜像；下载仍按官方 npm 包内 SHA-256 校验：
+ELECTRON_MIRROR=https://npmmirror.com/mirrors/electron/ ELECTRON_CUSTOM_DIR=42.3.0 python3 convert.py
+ELECTRON_CUSTOM_DIR 应填写 --inspect 显示的精确 Electron 版本。
+
+只检查来源版本与架构：
+python3 convert.py --inspect
+
+指定来源、CLI 或新输出位置：
+python3 convert.py --source /path/to/ChatGPT.app --codex /path/to/intel/codex --output 'dist/Codex Intel New.app'
+输出必须尚不存在，构建器不会覆盖现有 App。
+源码、工具、缓存与成品均保存在本仓库目录中。
+
+验证
+node smoke-test.mjs
+实际执行 SQLite 查询、启动伪终端、加载 Objective-C 桥接、初始化 Codex 后端、读取登录状态与模型目录，最后启动界面并保存截图。
+界面测试使用临时设置目录，不覆盖日常界面设置，也不替本人完成首次引导。
+报告保存在 dist/smoke-report.json，截图为 dist/smoke-screen.png。
+
+node coding-e2e.mjs
+会发起一次真实模型请求，在临时目录创建并读取指定文件，完成后清理临时目录。
+结果保存在 dist/coding-e2e-report.json；不向原有项目写文件。
+
+做了哪些适配
+1. 使用与来源版本对应的 macOS x64 Electron，替换 ARM 运行时。
+2. 重建数据库和终端模块，选择可加载的 Intel Objective-C 桥接。
+3. 自动选择本机较新的 Intel Codex 后端，并复制相邻的代码执行宿主与 ripgrep。
+4. 通过 intel-compat.cjs 提供任务管理器、窗口能力查询、语言等兼容接口；不支持的窗口效果明确报告为不支持。
+5. 原样保留后端登录、订阅和权限决策，不伪造设备校验。
+6. 关闭官方自动更新，避免兼容版被 ARM 版本覆盖；新版本需要重新运行工具。
+7. 对本地副本使用 ad-hoc 签名，记录来源哈希、架构、兼容接口与构建参数。
+
+当前限制
+内置浏览器的 Owl 原生集成、网站活动记录、部分系统快捷键和 Work Louder 外设集成尚未适配。
+网站活动记录保持关闭；原生浏览器权限仍由上游的标准权限处理器拒绝，不自动放行。
+电脑控制与语音尚未验证，不把界面能启动视为这些功能可用。
+兼容性说明也可在 App 的帮助菜单中查看。
+未来官方更新可能增加新的 Owl 或 ARM 依赖，需要进一步适配。
+
+开发
+--dev-compat 仅用于本地调试，会让 App 引用仓库中的兼容模块；正常构建将模块封装进 App，使用时不依赖外部源码路径。
+构建产物、官方包、模型验证结果、日志与缓存不纳入 Git。
+
+依据
+https://learn.chatgpt.com/docs/app
+https://learn.chatgpt.com/docs/app-server
+https://www.electronjs.org/docs/latest/tutorial/installation
+https://www.electronjs.org/docs/latest/tutorial/using-native-node-modules
+https://www.electronjs.org/docs/latest/tutorial/application-distribution

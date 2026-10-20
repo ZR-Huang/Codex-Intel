@@ -1,0 +1,25 @@
+.cache/
+dist/
+__pycache__/
+*.log
+.DS_Store
+
+# Local credentials and machine-specific configuration.
+.env
+.env.*
+!.env.example
+.npmrc
+.pypirc
+.codex/
+.ssh/
+auth.json
+*credentials*.json
+*.key
+*.pem
+*.p12
+*.pfx
+*.mobileprovision
+
+# Keep original screenshots private; publish only reviewed exports.
+img/Screenshot*.png
+img/private/
